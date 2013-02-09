@@ -1,0 +1,86 @@
+__author__	= 'Sylvain Durand <sylvain.durand@ponts.org>'
+__license__	= 'GPL v3'
+
+from calibre.web.feeds.news import BasicNewsRecipe
+from calibre.ebooks.BeautifulSoup import BeautifulSoup
+from calibre.constants import preferred_encoding
+from urllib2 import HTTPError
+import tempfile
+
+class LeMonde(BasicNewsRecipe):
+
+	title			= 'Le Monde - Édition abonnés'
+	language		= 'fr'
+	encoding 		= 'utf8'
+	needs_subscription	= True
+
+	login_url   = 'http://www.lemonde.fr/web/journal_electronique/identification/1,56-0,45-0,0.html'
+	journal_url = 'http://www.lemonde.fr/journalelectronique/donnees/protege/%Y%m%d/'
+	
+	extra_css = ''' 
+		img{max-width:100%}
+		h1{font-size:1.2em !important; line-height:1.2em !important; }
+		h2{font-size:1em !important; line-height:1em !important; }
+		h3{font-size:1em !important; text-transform:uppercase !important; color:#666;}
+		#photo{text-align:center !important; margin:10px 0 -8px;}
+		#lgd{font-size:1em !important; line-height:1em !important;  font-style:italic; color:#333;} '''
+			
+	keep_only_tags = [dict(name=['h1','h2','h3','div','txt'])]
+	
+	def get_browser(self):
+		br = BasicNewsRecipe.get_browser(self)
+		response=br.open(self.login_url)
+		br.select_form(nr=0)
+		br['login']	= self.username
+		br['password'] = self.password
+		response = br.submit()
+		return br
+	
+	def get_last_edition(self):
+		browser = self.get_browser()
+		second = time.time() + 24*60*60
+		for i in range(7):
+			last_edition = time.gmtime(second)
+			url = time.strftime(self.journal_url+'%Y%m%d_ipad.xml',last_edition)
+			try:
+				resp = browser.open(url)
+				break
+			except HTTPError, e:
+				second -= 24*60*60
+		self.timefmt = time.strftime(" - %A %d %B %Y", last_edition).decode(preferred_encoding).replace(' 0',' ')
+		return last_edition
+		
+	def get_cover_url(self):
+		url = time.strftime(self.journal_url+'/QUO/pdf_iphone/1.pdf',self.get_last_edition())
+		return url
+
+	def parse_index(self):
+		url = time.strftime(self.journal_url+'%Y%m%d_ipad.xml',self.get_last_edition())
+		soup = self.index_to_soup(url).sommaire
+		sections = []
+		for sec in soup.findAll("section"):
+			articles = []
+			if sec['cahier'] != "Le Monde":
+				for col in sec.findAll("fnts"):
+					col.extract()
+			if sec['cahier']=="Le Monde Magazine":
+				continue
+			for art in sec.findAll("art"):
+				if art.txt.string and art.ttr.string:
+					if art.find(['url']):
+						art.insert(6,'<div id="photo"><img src="'+art.find(['url']).string+'" /></div>')
+					if art.find(['lgd']) and art.find(['lgd']).string:
+						art.insert(7,'<div id="lgd">'+art.find(['lgd']).string+'</div>')
+					article = "<html><head></head><body>"+str(art)+"</body></html>"
+					article = article.replace('<![CDATA[','').replace(']]>','').replace(' oC ','°C ')
+					article = article.replace('srttr>','h3>').replace('ssttr>','h2>').replace('ttr>','h1>')
+					f = tempfile.TemporaryFile(delete=False)
+					f.write(article)
+					articles.append({'title':art.ttr.string,'url':"file:///"+f.name})
+			sections.append((sec['nom'], articles))
+		return sections
+	
+	def preprocess_html(self, soup):
+		for lgd in soup.findAll(id="lgd"):
+			lgd.contents[-1].extract()
+		return soup
