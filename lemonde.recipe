@@ -10,6 +10,8 @@ import tempfile
 class LeMonde(BasicNewsRecipe):
 
 	title			= 'Le Monde - Édition abonnés'
+	__author__		= 'Sylvain Durand'
+	description		= '« Le Monde », quotidien national au plus fort tirage de France, disponible du lundi au samedi à partir de 15 heures environ avec tous ses cahiers.'
 	language		= 'fr'
 	encoding 		= 'utf8'
 	needs_subscription	= True
