@@ -4,8 +4,8 @@ __license__	= 'GPL v3'
 from calibre.web.feeds.news import BasicNewsRecipe
 from calibre.ebooks.BeautifulSoup import BeautifulSoup
 from calibre.constants import preferred_encoding
+from calibre.ptempfile import PersistentTemporaryFile
 from urllib2 import HTTPError
-import tempfile
 
 class LeMonde(BasicNewsRecipe):
 
@@ -76,7 +76,7 @@ class LeMonde(BasicNewsRecipe):
 					article = "<html><head></head><body>"+str(art)+"</body></html>"
 					article = article.replace('<![CDATA[','').replace(']]>','').replace(' oC ','°C ')
 					article = article.replace('srttr>','h3>').replace('ssttr>','h2>').replace('ttr>','h1>')
-					f = tempfile.TemporaryFile(delete=False)
+					f = PersistentTemporaryFile()
 					f.write(article)
 					articles.append({'title':art.ttr.string,'url':"file:///"+f.name})
 			sections.append((sec['nom'], articles))
