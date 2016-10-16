@@ -1,4 +1,4 @@
-__author__	= 'Sylvain Durand <sylvain.durand@ponts.org>'
+__author__	= 'S. Durand <sdurand@users.noreply.github.com>'
 __license__	= 'GPL v3'
 
 from calibre.web.feeds.news import BasicNewsRecipe
